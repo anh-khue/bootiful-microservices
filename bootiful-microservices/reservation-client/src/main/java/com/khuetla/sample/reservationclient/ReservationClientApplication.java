@@ -8,16 +8,22 @@ import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
 import org.springframework.cloud.netflix.feign.EnableFeignClients;
 import org.springframework.cloud.netflix.feign.FeignClient;
 import org.springframework.cloud.netflix.zuul.EnableZuulProxy;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.cloud.stream.annotation.EnableBinding;
+import org.springframework.cloud.stream.annotation.Output;
+import org.springframework.integration.annotation.Gateway;
+import org.springframework.integration.annotation.IntegrationComponentScan;
+import org.springframework.integration.annotation.MessagingGateway;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-@EnableFeignClients
+@IntegrationComponentScan
+@EnableBinding(ReservationPublisherChannels.class)
 @EnableCircuitBreaker
+@EnableFeignClients
 @EnableZuulProxy // Technically unnecessary
 @SpringBootApplication
 public class ReservationClientApplication {
@@ -25,6 +31,23 @@ public class ReservationClientApplication {
     public static void main(String[] args) {
         SpringApplication.run(ReservationClientApplication.class, args);
     }
+}
+
+
+interface ReservationPublisherChannels {
+
+    String CREATE_RESERVATION = "createReservation";
+
+    @Output(CREATE_RESERVATION)
+    MessageChannel createReservation();
+}
+
+
+@MessagingGateway
+interface ReservationMessagingGateway {
+
+    @Gateway(requestChannel = ReservationPublisherChannels.CREATE_RESERVATION)
+    void createReservation(String name);
 }
 
 
@@ -42,8 +65,18 @@ class ReservationApiAdapterRestController {
 
     private final ReservationReader reservationReader;
 
-    ReservationApiAdapterRestController(ReservationReader reservationReader) {
+    private final ReservationMessagingGateway reservationMessagingGateway;
+
+    ReservationApiAdapterRestController(ReservationReader reservationReader,
+                                        ReservationMessagingGateway reservationMessagingGateway) {
         this.reservationReader = reservationReader;
+        this.reservationMessagingGateway = reservationMessagingGateway;
+    }
+
+    @PostMapping
+    void create(@RequestBody Reservation reservation) {
+        this.reservationMessagingGateway
+                .createReservation(reservation.getName());
     }
 
     Collection<String> fallback() {
