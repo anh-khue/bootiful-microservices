@@ -47,34 +47,34 @@ interface ReservationPublisherChannels {
 interface ReservationMessagingGateway {
 
     @Gateway(requestChannel = ReservationPublisherChannels.CREATE_RESERVATION)
-    void createReservation(String name);
+    void createReservation(String reservationName);
 }
 
 
 @FeignClient("reservation-service")
-interface ReservationReader {
+interface ReservationClient {
 
     @GetMapping("/reservations")
-    Collection<Reservation> readReservations();
+    Collection<Reservation> getReservations();
 }
 
 
 @RestController
 @RequestMapping("/reservations")
-class ReservationApiAdapterRestController {
+class ReservationApiGateway {
 
-    private final ReservationReader reservationReader;
+    private final ReservationClient reservationClient;
 
     private final ReservationMessagingGateway reservationMessagingGateway;
 
-    ReservationApiAdapterRestController(ReservationReader reservationReader,
-                                        ReservationMessagingGateway reservationMessagingGateway) {
-        this.reservationReader = reservationReader;
+    ReservationApiGateway(ReservationClient reservationClient,
+                          ReservationMessagingGateway reservationMessagingGateway) {
+        this.reservationClient = reservationClient;
         this.reservationMessagingGateway = reservationMessagingGateway;
     }
 
     @PostMapping
-    void create(@RequestBody Reservation reservation) {
+    void createReservation(@RequestBody Reservation reservation) {
         this.reservationMessagingGateway
                 .createReservation(reservation.getName());
     }
@@ -85,9 +85,9 @@ class ReservationApiAdapterRestController {
 
     @HystrixCommand(fallbackMethod = "fallback")
     @GetMapping("/names")
-    Collection<String> names() {
-        return this.reservationReader
-                .readReservations()
+    Collection<String> getReservationsNames() {
+        return this.reservationClient
+                .getReservations()
                 .stream()
                 .map(Reservation::getName)
                 .collect(Collectors.toList());

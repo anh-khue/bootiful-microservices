@@ -52,8 +52,8 @@ class ReservationMessageEndpoint {
     }
 
     @ServiceActivator(inputChannel = ReservationSubscriberChannels.CREATE_RESERVATION)
-    public void createReservation(String name) {
-        this.reservationRepository.save(new Reservation(name));
+    public void createReservation(String reservationName) {
+        this.reservationRepository.save(new Reservation(reservationName));
     }
 }
 
@@ -102,12 +102,15 @@ class DataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments applicationArguments) throws Exception {
-        Stream.of("Servlet", "Hibernate", "Spring",
-                "Microservices", "Cloud", "Serverless",
-                "BigData", "IoT", "Blockchain")
+        Stream.of("Java", "Servlet", "Spring",
+                "Microservices", "Cloud Native", "Serverless",
+                "BigData", "IoT", "Data Stream")
                 .map(Reservation::new)
                 .forEach(reservationRepository::save);
-        reservationRepository.findAll().forEach(System.out::println);
+
+        // Observe messages queue's durability ensured by RabbitMQ
+        reservationRepository.findAll()
+                .forEach(System.out::println);
     }
 }
 
