@@ -1,2 +1,2 @@
-# spring-training
-Training for Building Microservices using Spring
+# bootiful-microservices
+Building simple Bootiful Microservices using Spring Framework.
